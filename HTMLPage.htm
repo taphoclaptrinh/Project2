@@ -1,0 +1,38 @@
+﻿<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8" />
+    <title>Bản đồ Leaflet Offline</title>
+    <link rel="stylesheet" href="leaflet/leaflet.css" />
+    <style>
+        html, body, #map {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+
+    <script src="leaflet/leaflet.js"></script>
+    <script>
+        const map = L.map('map').setView([10.762622, 106.660172], 13);
+
+        // Nếu bạn đã tải tile ảnh về máy, dùng đường dẫn sau:
+        // Ví dụ: tiles/13/4567/3210.png
+        L.tileLayer('tiles/{z}/{x}/{y}.png', {
+            attribution: 'Bản đồ offline',
+            maxZoom: 18,
+            minZoom: 10
+        }).addTo(map);
+
+        map.on('click', e => {
+            L.popup()
+                .setLatLng(e.latlng)
+                .setContent(`Bạn vừa click vào: ${e.latlng.toString()}`)
+                .openOn(map);
+        });
+    </script>
+</body>
+</html>
