@@ -19,8 +19,8 @@
     <script>
         const map = L.map('map').setView([16.0, 108.0], 6); // Set view để thấy cả 2 thành phố
 
-        L.tileLayer('tiles/{z}/{x}/{y}.png', {
-            attribution: 'Bản đồ offline',
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors',
             maxZoom: 18,
             minZoom: 5 // Giảm minZoom để có thể thấy cả nước
         }).addTo(map);
@@ -45,3 +45,4 @@
     </script>
 </body>
 </html>
+
