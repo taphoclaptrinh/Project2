@@ -1,46 +1,84 @@
 <!DOCTYPE html>
-<html lang="vi">
+<html>
 <head>
+    <title>Bản đồ Tương tác</title>
     <meta charset="utf-8" />
-    <title>Bản đồ Việt Nam</title>
-    
-    <link rel="stylesheet" href="leaflet/leaflet.css" />
-    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <style>
-        /* CSS để bản đồ chiếm toàn bộ trang */
         html, body, #map {
             height: 100%;
             width: 100%;
             margin: 0;
             padding: 0;
-            overflow: hidden;
         }
     </style>
 </head>
 <body>
     <div id="map"></div>
 
-    <script src="leaflet/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    
+    <script src="qrc:///qtwebchannel/qwebchannel.js"></script>
     
     <script>
-        // Khởi tạo bản đồ, đặt vị trí trung tâm để thấy cả nước và mức zoom ban đầu
-        const map = L.map('map').setView([16.0, 108.0], 6);
-
-        // Thêm lớp bản đồ nền từ OpenStreetMap (yêu cầu kết nối Internet)
+        const map = L.map('map').setView([10.77, 106.70], 13);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap contributors',
-            maxZoom: 18,
-            minZoom: 5
+            attribution: '© OpenStreetMap contributors'
         }).addTo(map);
 
-        // Thêm điểm đánh dấu cho Thành phố Hồ Chí Minh
-        L.marker([10.7769, 106.6952]).addTo(map)
-            .bindPopup('<b>Thành phố Hồ Chí Minh</b>');
+        let startMarker = null;
+        let endMarker = null;
+        let pathLayer = null;
 
-        // Thêm điểm đánh dấu cho Hà Nội
-        L.marker([21.0278, 105.8342]).addTo(map)
-            .bindPopup('<b>Hà Nội</b>');
+        // Chờ trang web tải xong rồi mới thiết lập kênh giao tiếp
+        window.onload = function() {
+            if (typeof qt !== 'undefined') {
+                new QWebChannel(qt.webChannelTransport, function (channel) {
+                    // cpp_bridge là tên đối tượng ta đã đăng ký ở C++
+                    window.cpp_bridge = channel.objects.cpp_bridge;
 
+                    // Lắng nghe tín hiệu 'pointSelected' từ C++ để vẽ marker
+                    cpp_bridge.pointSelected.connect(function(lat, lon, isStartPoint) {
+                        if (isStartPoint) {
+                            if (startMarker) map.removeLayer(startMarker);
+                            if (endMarker) map.removeLayer(endMarker);
+                            if (pathLayer) map.removeLayer(pathLayer);
+                            startMarker = L.marker([lat, lon], { title: "Điểm bắt đầu" }).addTo(map);
+                        } else {
+                            if (endMarker) map.removeLayer(endMarker);
+                            endMarker = L.marker([lat, lon], { title: "Điểm kết thúc" }).addTo(map);
+                        }
+                    });
+
+                    // Lắng nghe tín hiệu 'sendPathData' từ C++ để vẽ đường đi
+                    cpp_bridge.sendPathData.connect(function(jsonPathData) {
+                        const latlngs = JSON.parse(jsonPathData);
+                        if (pathLayer) map.removeLayer(pathLayer);
+                        pathLayer = L.polyline(latlngs, { color: 'blue', weight: 5, opacity: 0.8 }).addTo(map);
+                        if (latlngs.length > 0) {
+                            map.fitBounds(pathLayer.getBounds());
+                        }
+                    });
+                });
+            } else {
+                console.log("Khong chay trong moi truong Qt.");
+            }
+        };
+
+        // Khi người dùng click vào bản đồ, gọi hàm của C++
+        map.on('click', function(e) {
+            if (window.cpp_bridge) {
+                // Gọi hàm onMapClicked() của C++ và truyền tọa độ
+                window.cpp_bridge.onMapClicked(e.latlng.lat, e.latlng.lng);
+            } else {
+                // Hành vi mặc định khi không chạy trong Qt
+                L.popup()
+                    .setLatLng(e.latlng)
+                    .setContent("Bạn vừa click vào: " + e.latlng.toString())
+                    .openOn(map);
+            }
+        });
     </script>
 </body>
 </html>
