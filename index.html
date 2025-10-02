@@ -18,11 +18,24 @@
     <div id="map"></div>
 
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-    
     <script src="qrc:///qtwebchannel/qwebchannel.js"></script>
     
     <script>
-        const map = L.map('map').setView([10.77, 106.70], 13);
+        // --- PHẦN CODE ĐƯỢC THAY ĐỔI ---
+
+        // 1. Định nghĩa 2 góc của khung giới hạn cho Việt Nam
+        const corner1 = L.latLng(23.5, 102.0); // Tọa độ góc Tây Bắc
+        const corner2 = L.latLng(8.4, 109.5);  // Tọa độ góc Đông Nam
+        const maxBounds = L.latLngBounds(corner1, corner2);
+
+        // 2. Thêm các tùy chọn giới hạn vào khi khởi tạo bản đồ
+        const map = L.map('map', {
+            maxBounds: maxBounds, // Đặt khung giới hạn
+            minZoom: 6            // Ngăn người dùng thu nhỏ quá mức
+        }).setView([16.0, 108.0], 6); // Đặt khung nhìn ban đầu bao quát cả nước
+
+        // --- KẾT THÚC PHẦN THAY ĐỔI ---
+
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '© OpenStreetMap contributors'
         }).addTo(map);
@@ -31,14 +44,12 @@
         let endMarker = null;
         let pathLayer = null;
 
-        // Chờ trang web tải xong rồi mới thiết lập kênh giao tiếp
+        // ... (toàn bộ code giao tiếp QWebChannel còn lại giữ nguyên không đổi) ...
         window.onload = function() {
             if (typeof qt !== 'undefined') {
                 new QWebChannel(qt.webChannelTransport, function (channel) {
-                    // cpp_bridge là tên đối tượng ta đã đăng ký ở C++
                     window.cpp_bridge = channel.objects.cpp_bridge;
-
-                    // Lắng nghe tín hiệu 'pointSelected' từ C++ để vẽ marker
+                    
                     cpp_bridge.pointSelected.connect(function(lat, lon, isStartPoint) {
                         if (isStartPoint) {
                             if (startMarker) map.removeLayer(startMarker);
@@ -51,7 +62,6 @@
                         }
                     });
 
-                    // Lắng nghe tín hiệu 'sendPathData' từ C++ để vẽ đường đi
                     cpp_bridge.sendPathData.connect(function(jsonPathData) {
                         const latlngs = JSON.parse(jsonPathData);
                         if (pathLayer) map.removeLayer(pathLayer);
@@ -61,22 +71,12 @@
                         }
                     });
                 });
-            } else {
-                console.log("Khong chay trong moi truong Qt.");
             }
         };
 
-        // Khi người dùng click vào bản đồ, gọi hàm của C++
         map.on('click', function(e) {
             if (window.cpp_bridge) {
-                // Gọi hàm onMapClicked() của C++ và truyền tọa độ
                 window.cpp_bridge.onMapClicked(e.latlng.lat, e.latlng.lng);
-            } else {
-                // Hành vi mặc định khi không chạy trong Qt
-                L.popup()
-                    .setLatLng(e.latlng)
-                    .setContent("Bạn vừa click vào: " + e.latlng.toString())
-                    .openOn(map);
             }
         });
     </script>
